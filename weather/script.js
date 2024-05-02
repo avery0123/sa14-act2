@@ -1,37 +1,58 @@
-document.getElementById('weatherForm').addEventListener('submit', function(event) {
+const apiKey = '5b61fccd85b14893bf0212825242904';
+const form = document.getElementById('weather-form');
+const cityNameInput = document.getElementById('city-name');
+const currentWeatherDiv = document.getElementById('current-weather');
+const forecastDiv = document.getElementById('forecast-days');
+
+form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    const city = document.getElementById('cityInput').value;
-    getWeather(city);
+    const cityName = cityNameInput.value.trim();
+    if (cityName) {
+        try {
+            const weatherData = await fetchWeatherData(cityName);
+            displayWeatherData(weatherData);
+        } catch (error) {
+            console.error('Error fetching weather data:', error);
+        }
+    }
 });
 
-function getWeather(city) {
-    const apiKey = '5b61fccd85b14893bf0212825242904';
-    const apiUrl = `https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${city}`;
-
-    fetch(apiUrl)
-        .then(response => response.json())
-        .then(data => {
-            displayWeather(data);
-        })
-        .catch(error => {
-            console.log('Error fetching weather data:', error);
-        });
+async function fetchWeatherData(cityName) {
+    const apiUrl = `http://api.weatherapi.com/v1/forecast.json?key=${apiKey}&q=${cityName}&days=5`;
+    const response = await fetch(apiUrl);
+    if (!response.ok) {
+        throw new Error('Failed to fetch data');
+    }
+    return response.json();
 }
 
-function displayWeather(data) {
-    document.getElementById('currentTime').textContent = `Current Time: ${data.location.localtime}`;
-    document.getElementById('currentTemp').textContent = `Temperature: ${data.current.temp_c}°C`;
-    document.getElementById('weatherIcon').src = data.current.condition.icon;
-    document.getElementById('weatherIcon').alt = data.current.condition.text;
-    document.getElementById('humidity').textContent = `Humidity: ${data.current.humidity}%`;
+function displayWeatherData(data) {
+    displayCurrentWeather(data.current, data.location);
+    displayForecast(data.forecast.forecastday);
+}
 
-    // Display 5-day forecast
-    const forecastDiv = document.getElementById('forecast');
-    forecastDiv.innerHTML = '';
-    for (let i = 0; i < 5; i++) {
-        const forecastItem = document.createElement('div');
-        forecastItem.classList.add('forecast-item');
-        forecastItem.textContent = `${data.forecast.forecastday[i].date}: ${data.forecast.forecastday[i].day.avgtemp_c}°C`;
-        forecastDiv.appendChild(forecastItem);
-    }
+function displayCurrentWeather(currentWeatherData, location) {
+    const { localtime, name } = location;
+    currentWeatherDiv.innerHTML = `
+        <h3>Current Weather in ${name}</h3>
+        <div>Time: ${localtime}</div>
+        <div>Temperature: ${currentWeatherData.temp_c}°C</div>
+        <div>Condition: ${currentWeatherData.condition.text}</div>
+        <div>Humidity: ${currentWeatherData.humidity}%</div>
+    `;
+}
+
+function displayForecast(forecastDays) {
+    forecastDiv.innerHTML = ''; // Clear existing forecast
+    forecastDays.forEach(day => {
+        const forecastDayDiv = document.createElement('div');
+        forecastDayDiv.className = 'forecast-day';
+        forecastDayDiv.innerHTML = `
+            <h4>Date: ${day.date}</h4>
+            <div>Condition: ${day.day.condition.text}</div>
+            <div>Max Temp: ${day.day.maxtemp_c}°C</div>
+            <div>Min Temp: ${day.day.mintemp_c}°C</div>
+        `;
+        forecastDiv.appendChild(forecastDayDiv);
+    });
 }
